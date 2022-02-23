@@ -29,7 +29,7 @@ public class AdminController {
     public Result update(@RequestBody Permission permission){
         return permissionService.update(permission);
     }
-    @PostMapping("permission/delete/{id}")
+    @GetMapping("permission/delete/{id}")
     public Result delete(@PathVariable("id") Long id){
         return permissionService.delete(id);
     }
