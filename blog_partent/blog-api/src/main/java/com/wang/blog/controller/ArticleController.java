@@ -58,7 +58,8 @@ public class ArticleController {
         return articleService.listArchives();
     }
 
-    @PostMapping("/view/{id}")
+    //@PostMapping("/view/{id}")
+    @PostMapping("{id}")
     public Result findArticleById(@PathVariable("id") Long articleId){
       return articleService.findArticleById(articleId);
     }

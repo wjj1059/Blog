@@ -17,6 +17,7 @@ import com.wang.blog.utils.UserThreadLocal;
 import com.wang.blog.vo.*;
 import com.wang.blog.vo.param.ArticleParam;
 import com.wang.blog.vo.param.PageParams;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,8 @@ public class ArticleServiceImpl implements ArticleService {
     private ThreadService threadService;
     @Autowired
     private ArticleTagMapper articleTagMapper;
+    @Autowired
+    private RocketMQTemplate rocketMQTemplate;
 
     @Override
     public Result listArticlePage(PageParams pageParams) {
@@ -166,6 +169,17 @@ public class ArticleServiceImpl implements ArticleService {
         //此接口 需要加入到拦截中使其先登录，不然拿不到
         SysUser sysUser = UserThreadLocal.get();
         Article article = new Article();
+        //判断是否为编辑
+        boolean isEdit = false;
+        if (articleParam.getId()!=null){
+            article = new Article();
+            article.setId(articleParam.getId());
+            article.setTitle(articleParam.getTitle());
+            article.setSummary(articleParam.getSummary());
+            article.setCategoryId(Long.parseLong(articleParam.getCategory().getId()));
+            this.articleMapper.updateById(article);
+            isEdit = true;
+        }
         article.setAuthorId(sysUser.getId());
         //设置权重(不置顶)
         article.setWeight(Article.Article_Common);
@@ -202,6 +216,12 @@ public class ArticleServiceImpl implements ArticleService {
             /*ArticleVo articleVo = new ArticleVo();
             articleVo.setId(article.getId());
             Result.success(articleVo);*/
+            if (isEdit){
+                //发送一条消息给rocketmq 当前文章更新，更新缓存
+                ArticleMessage articleMessage = new ArticleMessage();
+                articleMessage.setArticleId(article.getId());
+                rocketMQTemplate.convertAndSend("blog-update-article",articleMessage);
+            }
         return Result.success(map);
     }
 
